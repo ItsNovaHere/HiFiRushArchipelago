@@ -1,0 +1,6 @@
+/.xmake
+/.idea
+/Intermediates
+/Binaries
+/cmake-*
+/Hibiki

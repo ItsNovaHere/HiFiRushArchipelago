@@ -1,0 +1,31 @@
+local projectName = "hibiki"
+
+target(projectName)
+    set_kind("shared")
+    set_languages("cxx23")
+    set_exceptions("cxx")
+
+    add_includedirs(".")
+    add_files("*.cpp")
+    add_deps("UE4SS")
+
+    add_cxflags("/MT", { force = true })
+
+    on_load(function (target)
+        import("build_configs", { rootdir = get_config("scriptsRoot") })
+        build_configs:set_output_dir(target)
+    end)
+
+    on_config(function (target)
+        import("build_configs", { rootdir = get_config("scriptsRoot") })
+        build_configs:config(target)
+    end)
+
+    after_clean(function (target)
+        import("build_configs", { rootdir = get_config("scriptsRoot") })
+        build_configs:clean_output_dir(target)
+    end)
+
+    after_link(function (target)
+           os.cp(target:targetfile(), 'D:\\Steam\\steamapps\\common\\Hi-Fi RUSH\\Hibiki\\Binaries\\Win64\\Mods\\hibiki\\dlls\\main.dll')
+    end)
