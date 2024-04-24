@@ -1,2 +1,2 @@
-includes("RE-UE4SS")
+includes("deps/RE-UE4SS")
 includes("mod")

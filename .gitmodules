@@ -1,6 +1,6 @@
 [submodule "deps/apclientpp"]
 	path = deps/apclientpp
 	url = https://github.com/black-sliver/apclientpp.git
-[submodule "RE-UE4SS"]
-	path = RE-UE4SS
+[submodule "deps/RE-UE4SS"]
+	path = deps/RE-UE4SS
 	url = https://github.com/UE4SS-RE/RE-UE4SS.git
