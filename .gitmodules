@@ -4,3 +4,15 @@
 [submodule "deps/RE-UE4SS"]
 	path = deps/RE-UE4SS
 	url = https://github.com/UE4SS-RE/RE-UE4SS.git
+[submodule "deps/json"]
+	path = deps/json
+	url = https://github.com/nlohmann/json.git
+[submodule "deps/valijson"]
+	path = deps/valijson
+	url = https://github.com/tristanpenman/valijson.git
+[submodule "deps/wswrap"]
+	path = deps/wswrap
+	url = https://github.com/black-sliver/wswrap.git
+[submodule "deps/websocketpp"]
+	path = deps/websocketpp
+	url = https://github.com/zaphoyd/websocketpp.git
