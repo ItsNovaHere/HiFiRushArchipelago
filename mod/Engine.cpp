@@ -29,9 +29,22 @@ std::string GetMultiByte(std::wstring s) {
 	return r;
 }
 
+static UnrealScriptFunction old = nullptr;
+
 void empty(UObject* Context, FFrame& TheStack, void* RESULT_DECL) {
-	Log::Info("%s (%s) tried to call Multicast_UseItem.", GetMultiByte(Context->GetName()).c_str(), GetMultiByte(Context->GetFullName()).c_str());
+	static std::vector<const wchar_t*> itemsToHook = {L"LifeCoreItem", L"CircuitItem", L"ReverbPieceItem", L"LifeTankPieceItem"};
+
+	for (auto item : itemsToHook) {
+		if (Context->GetName().rfind(item, 0) == 0) {
+			Log::Info("%s (%s) tried to call Multicast_UseItem.", GetMultiByte(Context->GetName()).c_str(), GetMultiByte(Context->GetFullName()).c_str());
+			return;
+		}
+	}
+
+	old(Context, TheStack, RESULT_DECL);
 }
+
+
 
 std::pair<bool, bool> Engine::OnMapLoad(UEngine* EngineInst, FWorldContext &WorldContext, FURL URL, UPendingNetGame* PendingGame, FString &Error) {
 	std::vector<UObject*> objs{};
@@ -41,15 +54,12 @@ std::pair<bool, bool> Engine::OnMapLoad(UEngine* EngineInst, FWorldContext &Worl
 		Log::Info("PlaceableItem_BP Found (%s)", GetMultiByte(obj->GetFullName()).c_str());
 
 		UFunction* func = obj->GetFunctionByNameInChain(L"Multicast_UseItem");
-		auto old = func->GetFuncPtr();
 
-		Log::Info("%8x", old);
+		if (old == nullptr) {
+			old = func->GetFuncPtr();
+		}
 
 		func->SetFuncPtr(&empty);
-
-		if (obj->GetName().rfind(L"LifeCoreItem", 0) == 0) {
-
-		}
 	}
 
 	return std::make_pair(false, true);
