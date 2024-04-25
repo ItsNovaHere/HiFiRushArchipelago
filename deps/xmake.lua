@@ -53,4 +53,3 @@ add_requires("websocketpp")
 target("wswrap")
     set_kind("headeronly")
     add_includedirs(path.join(os.scriptdir(), "wswrap/include"), { public = true })
-
