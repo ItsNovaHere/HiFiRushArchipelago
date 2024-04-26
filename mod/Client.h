@@ -1,3 +1,7 @@
+#ifndef CLIENT_H
+#define CLIENT_H
+
+#define APCLIENT_DEBUG
 #define AP_PREFER_UNENCRYPTED
 
 #include <apclient.hpp>
@@ -17,6 +21,8 @@ public:
 	Client();
 	void Connect();
 	void Update();
+	void SendItem(const std::string& Item);
+	void SetState(APClient::ClientStatus status);
 
 private:
 	std::unique_ptr<APClient> ap;
@@ -33,3 +39,5 @@ private:
 	void OnPrintJson(const std::list<APClient::TextNode>& msg);
 	void OnBounced(const nlohmann::json& cmd);
 };
+
+#endif

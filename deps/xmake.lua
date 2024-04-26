@@ -23,18 +23,10 @@ package_end()
 
 add_requires("json")
 
-package("valijson")
-    add_deps("cmake")
-    set_sourcedir(path.join(os.scriptdir(), "valijson"))
-    on_install(function (package)
-        local configs = {}
-        table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
-        table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
-        import("package.tools.cmake").install(package, configs)
-    end)
-package_end()
-
-add_requires("valijson")
+target("valijson")
+    set_kind("headeronly")
+        add_includedirs(path.join(os.scriptdir(), "valijson/include"), { public = true })
+target_end()
 
 package("websocketpp")
     add_deps("cmake")

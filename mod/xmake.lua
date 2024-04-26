@@ -11,7 +11,7 @@ target(projectName)
     add_deps("apclientpp")
     add_deps("asio")
     add_packages("json")
-    add_packages("valijson")
+    add_deps("valijson")
     add_packages("websocketpp")
     add_deps("wswrap")
 
@@ -21,6 +21,7 @@ target(projectName)
     add_defines("_WIN32_WINNT=0x0600")
     add_defines("WSWRAP_NO_SSL") -- disable ssl for now
     add_defines("_WEBSOCKETPP_CPP11_INTERNAL_")
+    add_defines("NOMINMAX")
 
     on_load(function (target)
         import("build_configs", { rootdir = get_config("scriptsRoot") })

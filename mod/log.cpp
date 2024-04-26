@@ -1,7 +1,3 @@
-//
-// Created by Tyler on 2024-04-23.
-//
-
 #include "log.h"
 
 void Log::Info(const char* fmt, ...) {

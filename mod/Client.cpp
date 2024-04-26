@@ -2,12 +2,27 @@
 #include <apuuid.hpp>
 #include <string>
 #include <functional>
+#include "Engine.h"
+#include "EHbkPlayerAppendAbilityType.h"
 #include "log.h"
+
+
 
 using namespace std::placeholders;
 
 Client::Client() {
 
+}
+
+void Client::SendItem(const std::string& Item) {
+	ap->LocationChecks( { ap->get_location_id(Item) } );
+	ap->Sync();
+}
+
+void Client::SetState(APClient::ClientStatus status) {
+	if (ap) {
+		ap->StatusUpdate(status);
+	}
 }
 
 void Client::Update() {
@@ -39,7 +54,7 @@ void Client::Connect() {
 
 void Client::OnSocketConnected() {
 	Log::Info("[APClient] Socket Connected");
-	ap->ConnectSlot(name, password, 0b101);
+	ap->ConnectSlot(name, password, 0b111); // TODO: switch to 0b101 for release
 }
 
 void Client::OnSocketDisconnected() {
@@ -47,15 +62,16 @@ void Client::OnSocketDisconnected() {
 }
 
 void Client::OnSocketError(const std::string &Error) {
-	Log::Info("[APClient] Socket error: %s", Error);
+	Log::Info("[APClient] Socket error: %s", Error.c_str());
 }
 
 void Client::OnRoomInfo() {
-
+	ap->GetDataPackage();
 }
 
 void Client::OnSlotConnected(const nlohmann::json& _) {
 	Log::Info("[APClient] Slot Connected");
+	ap->StatusUpdate(APClient::ClientStatus::READY);
 }
 
 void Client::OnSlotDisconnected() {
@@ -67,11 +83,15 @@ void Client::OnSlotRefused(const std::list <std::string> &errors) {
 }
 
 void Client::OnItemsReceived(const std::list <APClient::NetworkItem> &items) {
-
+	for (auto item : items) {
+		if (ap->get_item_name(item.item) == "Magnet") {
+			Engine::GiveAbility(EHbkPlayerAppendAbilityType::Action_Magnet);
+		}
+	}
 }
 
 void Client::OnPrint(const std::string &msg) {
-	Log::Info("[APClient] %s", msg);
+	Log::Info("[APClient] %s", msg.c_str());
 }
 
 void Client::OnPrintJson(const std::list <APClient::TextNode> &msg) {
