@@ -42,16 +42,36 @@ void Engine::OnProcessEvent(UObject* Context, UFunction* Function, void* Params)
 static UnrealScriptFunction learnAbilityInternal = nullptr;
 static FProperty* propStart = nullptr;
 
+typedef void (*FNativeFuncPtr)(UObject* Context, FFrame_50_AndBelow& TheStack, void* Z_Param__Result);
 
-void LearnAbility(UObject* Context, FFrame& TheStack, void* RESULT_DECL) {
-	// figure out how to get ability from this to see if we should let this happen or not
-	
-	for (auto i = 0; i < 256; i++) {
-		auto ability = (EHbkPlayerAppendAbilityType) *(TheStack.Locals() + i);
-		Log::Info("%d = %s", i, AbilityToString(ability));
+void LearnAbility(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
+	auto Stack = (FFrame_50_AndBelow&) TheStack;
+	const FNativeFuncPtr* GNatives = (FNativeFuncPtr*) 0x147196eb0;
+	if (Stack.Code) {
+		auto reset = Stack.Code;
+		UObject* obj;
+		auto B = *Stack.Code++;
+		(GNatives[B])(TheStack.Object(), Stack, &obj);
+
+		EHbkPlayerAppendAbilityType ability;
+		B = *Stack.Code++;
+		(GNatives[B])(TheStack.Object(), Stack, &ability);
+
+		static std::list<EHbkPlayerAppendAbilityType> AbilitiesToDisableLearning = {
+				EHbkPlayerAppendAbilityType::Action_Magnet,
+		};
+
+		for (auto a : AbilitiesToDisableLearning) {
+			if (ability == a) {
+				Log::Info("Game tried to learn ability %s, but it is in the block list, returning.", AbilityToString(ability));
+				return;
+			}
+		}
+
+		Stack.Code = reset;
 	}
 
-	learnAbilityInternal(Context, TheStack, RESULT_DECL);
+	learnAbilityInternal(Context, TheStack, Z_Param__Result);
 }
 
 void Engine::GiveAbility(EHbkPlayerAppendAbilityType ability) {
@@ -81,11 +101,11 @@ struct FEngineCreateListener : public FUObjectCreateListener {
 		if (cla->GetSuperStruct()->GetName() == L"HbkPlayerCharacterManager") {
 			auto func = ((UObject*)object)->GetFunctionByNameInChain(L"LearnPlayerAbility");
 
+			Log::Info("%p", (void*)func->GetFuncPtr());
+
 			if (learnAbilityInternal == nullptr) {
 				learnAbilityInternal = func->GetFuncPtr();
-				propStart = func->GetFirstPropertyToInit();
-
-				Log::Info("%p", (void*)learnAbilityInternal);
+				propStart = (FProperty*) func->GetChildProperties();
 
 				func->SetFuncPtr(&LearnAbility);
 			}
@@ -105,8 +125,6 @@ FEngineCreateListener FEngineCreateListener::EngineCreateListener{};
 void Engine::SetupHooks() {
 	UObjectArray::AddUObjectCreateListener(&FEngineCreateListener::EngineCreateListener);
 }
-
-
 
 static UnrealScriptFunction old = nullptr;
 
