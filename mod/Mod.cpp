@@ -5,7 +5,7 @@
 
 #include "Mod.h"
 #include "Engine.h"
-#include "EHbkPlayerAppendAbilityType.h"
+#include "Game/EHbkPlayerAppendAbilityType.h"
 #include "log.h"
 
 using namespace RC;
@@ -57,12 +57,14 @@ HibikiMod::HibikiMod() {
 			if (ImGui::Button("Give grapple")) {
 				Engine::GiveAbility(EHbkPlayerAppendAbilityType::Action_Magnet);
 			}
+
+			if (ImGui::Button("Give life core")) {
+				Engine::GiveItem();
+			}
 		});
 }
 
 auto HibikiMod::on_unreal_init() -> void {
-	Hook::RegisterStaticConstructObjectPostCallback(&Engine::OnStaticConstructObject);
-	Hook::RegisterProcessEventPreCallback(&Engine::OnProcessEvent);
 	Hook::RegisterLoadMapPostCallback(&Engine::OnMapLoad);
 
 	Engine::SetupHooks();

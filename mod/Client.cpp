@@ -3,7 +3,7 @@
 #include <string>
 #include <functional>
 #include "Engine.h"
-#include "EHbkPlayerAppendAbilityType.h"
+#include "Game/EHbkPlayerAppendAbilityType.h"
 #include "log.h"
 
 
@@ -54,7 +54,7 @@ void Client::Connect() {
 
 void Client::OnSocketConnected() {
 	Log::Info("[APClient] Socket Connected");
-	ap->ConnectSlot(name, password, 0b111); // TODO: switch to 0b101 for release
+	ap->ConnectSlot(name, password, 0b111);
 }
 
 void Client::OnSocketDisconnected() {
@@ -83,9 +83,21 @@ void Client::OnSlotRefused(const std::list <std::string> &errors) {
 }
 
 void Client::OnItemsReceived(const std::list <APClient::NetworkItem> &items) {
+	static std::unordered_map<std::string, std::function<void()>> giveMap = {
+			// Abilities
+			{ "Magnet", 						[] { Engine::GiveAbility(EHbkPlayerAppendAbilityType::Action_Magnet); } 	},
+
+			// Items
+			{ "Life Gauge Piece", 				[] { Engine::GiveItem(L"ItemObj_LifeCorePiece_PLC_C"); } 					},
+			{ "Electric Reverb Core Piece",	[] { Engine::GiveItem(L"ItemObj_ReverbPiece_PLC_C"); } 					},
+			{ "Broken Piece of a Health Tank", [] { Engine::GiveItem(L"ItemObj_LifeTankPiece_PLC_C"); } 					},
+	};
+
 	for (auto item : items) {
-		if (ap->get_item_name(item.item) == "Magnet") {
-			Engine::GiveAbility(EHbkPlayerAppendAbilityType::Action_Magnet);
+		if (auto search = giveMap.find(ap->get_item_name(item.item)); search != giveMap.end()) {
+			search->second();
+		} else {
+			Log::Info("Tried to give item %s, but is not in the give map.", ap->get_item_name(item.item).c_str());
 		}
 	}
 }

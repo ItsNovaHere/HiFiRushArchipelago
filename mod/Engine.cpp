@@ -2,6 +2,8 @@
 #include <Unreal/AActor.hpp>
 #include <Unreal/UClass.hpp>
 #include <Unreal/UObject.hpp>
+#include <Unreal/UAssetRegistry.hpp>
+#include <Unreal/UAssetRegistryHelpers.hpp>
 #include <Unreal/UObjectArray.hpp>
 #include <Unreal/UFunction.hpp>
 #include <Unreal/UEngine.hpp>
@@ -9,42 +11,25 @@
 #include <Unreal/FFrame.hpp>
 #include <Unreal/UActorComponent.hpp>
 #include <Unreal/Property/NumericPropertyTypes.hpp>
+#include <Unreal/UScriptStruct.hpp>
 #include <stdlib.h>
 #include <Windows.h>
 #include "Mod.h"
-#include "EHbkPlayerAppendAbilityType.h"
+#include "Util.h"
+#include "Game/EHbkPlayerAppendAbilityType.h"
 
 using namespace RC;
 using namespace Unreal;
 
-std::string GetMultiByte(std::wstring s) {
-	auto size = WideCharToMultiByte(CP_UTF8, 0, s.c_str(), -1, NULL, 0, NULL, NULL);
-	std::string r(size, 0);
-	WideCharToMultiByte(CP_UTF8, 0, s.c_str(), -1, &r[0], size, NULL, NULL);
+extern static Engine::LearnAbility_internal;
+extern static Engine::UseItem_internal;
+extern static Engine::propStart;
+extern static Engine::placementAssets;
+extern static Engine::loadedPlacementAssets;
+extern static Engine::takeItem;
+extern static Engine::FEngineCreateListener Engine::FEngineCreateListener::EngineCreateListener;
 
-	if (const auto pos = r.find('\0'); pos != std::string::npos){
-		r.erase(pos);
-	}
-
-	return r;
-}
-
-UObject* Engine::OnStaticConstructObject(const FStaticConstructObjectParameters& Params, UObject* ConstructedObject) {
-
-
-	return ConstructedObject;
-}
-
-void Engine::OnProcessEvent(UObject* Context, UFunction* Function, void* Params) {
-
-}
-
-static UnrealScriptFunction learnAbilityInternal = nullptr;
-static FProperty* propStart = nullptr;
-
-typedef void (*FNativeFuncPtr)(UObject* Context, FFrame_50_AndBelow& TheStack, void* Z_Param__Result);
-
-void LearnAbility(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
+void LearnAbility_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 	auto Stack = (FFrame_50_AndBelow&) TheStack;
 	const FNativeFuncPtr* GNatives = (FNativeFuncPtr*) 0x147196eb0;
 	if (Stack.Code) {
@@ -71,14 +56,62 @@ void LearnAbility(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 		Stack.Code = reset;
 	}
 
-	learnAbilityInternal(Context, TheStack, Z_Param__Result);
+	LearnAbility_internal(Context, TheStack, Z_Param__Result);
+}
+
+void UseItem_Hook(UObject* Context, FFrame& TheStack, void* RESULT_DECL) {
+	static std::vector<const wchar_t*> itemsToHook = {L"LifeCoreItem", L"CircuitItem", L"ReverbPieceItem", L"LifeTankPieceItem"};
+
+	for (auto item : itemsToHook) {
+		if (Context->GetName().rfind(item, 0) == 0) {
+			Log::Info("%s (%s) tried to call Multicast_UseItem.", Util::WideToMultiByte(Context->GetName()).c_str(), Util::WideToMultiByte(Context->GetFullName()).c_str());
+			HibikiMod::Instance->client.SendItem(Util::WideToMultiByte(Context->GetName()));
+			return;
+		}
+	}
+
+	UseItem_internal(Context, TheStack, RESULT_DECL);
+}
+
+void Engine::FEngineCreateListener::NotifyUObjectCreated(const RC::Unreal::UObjectBase* object, RC::Unreal::int32 index) {
+	auto cla = ((UObject*)object)->GetClassPrivate();
+	if (cla->GetSuperStruct()->GetName() == L"HbkPlayerCharacterManager") {
+		auto func = ((UObject*)object)->GetFunctionByNameInChain(L"LearnPlayerAbility");
+
+		Log::Info("%p", (void*)func->GetFuncPtr());
+
+		if (LearnAbility_internal == nullptr) {
+			LearnAbility_internal = func->GetFuncPtr();
+			propStart = (FProperty*) func->GetChildProperties();
+
+			func->SetFuncPtr(&LearnAbility_Hook);
+		}
+
+		if (func->GetFuncPtr() != &LearnAbility_Hook) {
+			func->SetFuncPtr(&LearnAbility_Hook);
+		}
+	}
+}
+
+void Engine::FEngineCreateListener::OnUObjectArrayShutdown() {
+	UObjectArray::RemoveUObjectCreateListener(this);
+}
+
+void Engine::GiveItem(const wchar_t* name) {
+	// TODO: maybe hook the popup to say who gave the item?
+	auto obj = UObjectGlobals::FindFirstOf(L"HbkPlayerCharacterManager_BP_C");
+	if (obj && Engine::placementAssets.contains(name)) {
+		auto tag = placementAssets[name];
+		takeItem(obj, tag, 3);
+	} else {
+		//TODO: log error
+	}
 }
 
 void Engine::GiveAbility(EHbkPlayerAppendAbilityType ability) {
-	// don't ask
 	auto obj = UObjectGlobals::FindFirstOf(L"HbkPlayerCharacterManager_BP_C");
 	auto func = obj->GetFunctionByNameInChain(L"LearnPlayerAbility");
-	func->SetFuncPtr(learnAbilityInternal);
+	func->SetFuncPtr(LearnAbility_internal);
 
 	struct params {
 		UObject* obj;
@@ -89,73 +122,50 @@ void Engine::GiveAbility(EHbkPlayerAppendAbilityType ability) {
 	};
 
 	obj->ProcessEvent(func, (void*)&p);
-	func->SetFuncPtr(&LearnAbility);
+	func->SetFuncPtr(&LearnAbility_Hook);
 }
-
-
-struct FEngineCreateListener : public FUObjectCreateListener {
-	static FEngineCreateListener EngineCreateListener;
-
-	void NotifyUObjectCreated(const UObjectBase* object, int32 index) override {
-		auto cla = ((UObject*)object)->GetClassPrivate();
-		if (cla->GetSuperStruct()->GetName() == L"HbkPlayerCharacterManager") {
-			auto func = ((UObject*)object)->GetFunctionByNameInChain(L"LearnPlayerAbility");
-
-			Log::Info("%p", (void*)func->GetFuncPtr());
-
-			if (learnAbilityInternal == nullptr) {
-				learnAbilityInternal = func->GetFuncPtr();
-				propStart = (FProperty*) func->GetChildProperties();
-
-				func->SetFuncPtr(&LearnAbility);
-			}
-
-			if (func->GetFuncPtr() != &LearnAbility) {
-				func->SetFuncPtr(&LearnAbility);
-			}
-		}
-	}
-
-	void OnUObjectArrayShutdown() override {
-		UObjectArray::RemoveUObjectCreateListener(this);
-	}
-};
-FEngineCreateListener FEngineCreateListener::EngineCreateListener{};
 
 void Engine::SetupHooks() {
 	UObjectArray::AddUObjectCreateListener(&FEngineCreateListener::EngineCreateListener);
 }
 
-static UnrealScriptFunction old = nullptr;
+void Engine::LoadPlacementAssets() {
+	TArray<FAssetData> AllAssets{nullptr, 0, 0};
+	auto reg = (UAssetRegistry*) UAssetRegistryHelpers::GetAssetRegistry().ObjectPointer;
+	reg->GetAllAssets(AllAssets, false);
 
-void empty(UObject* Context, FFrame& TheStack, void* RESULT_DECL) {
-	static std::vector<const wchar_t*> itemsToHook = {L"LifeCoreItem", L"CircuitItem", L"ReverbPieceItem", L"LifeTankPieceItem"};
+	for (FAssetData& Asset : AllAssets) {
+		if (Asset.PackageName().ToString().rfind(L"Item/Object/Placement") != std::wstring::npos) {
+			Log::Info("%s", Util::WideToMultiByte(Asset.PackageName().ToString()).c_str());
+			Log::Info("%s", Util::WideToMultiByte(Asset.AssetName().ToString()).c_str());
+			Log::Info("");
+		}
 
-	for (auto item : itemsToHook) {
-		if (Context->GetName().rfind(item, 0) == 0) {
-			Log::Info("%s (%s) tried to call Multicast_UseItem.", GetMultiByte(Context->GetName()).c_str(), GetMultiByte(Context->GetFullName()).c_str());
-			HibikiMod::Instance->client.SendItem(GetMultiByte(Context->GetName()));
-			return;
+		if (Asset.ObjectPath().ToString().ends_with(L"_PLC_C")) {
+			auto clas = (UClass*) UAssetRegistryHelpers::GetAsset(Asset);
+			auto asset = clas->GetClassDefaultObject();
+			Log::Info("%s", Util::WideToMultiByte(asset->GetFullName()).c_str());
+			Engine::placementAssets.insert({ Asset.AssetName().ToString(), *asset->GetValuePtrByPropertyNameInChain<FGameplayTag>(L"InventoryItemTag") });
 		}
 	}
 
-	old(Context, TheStack, RESULT_DECL);
+	Engine::loadedPlacementAssets = true;
 }
 
 std::pair<bool, bool> Engine::OnMapLoad(UEngine* EngineInst, FWorldContext &WorldContext, FURL URL, UPendingNetGame* PendingGame, FString &Error) {
-	std::vector<UObject*> objs{};
+	std::vector < UObject * > objs{};
 	UObjectGlobals::FindAllOf(L"PlaceableItem_BP_C", objs);
 
-	for (auto obj : objs) {
-		Log::Info("PlaceableItem_BP Found (%s)", GetMultiByte(obj->GetFullName()).c_str());
+	for (auto obj: objs) {
+		Log::Info("PlaceableItem_BP Found (%s)", Util::WideToMultiByte(obj->GetFullName()).c_str());
 
 		UFunction* func = obj->GetFunctionByNameInChain(L"Multicast_UseItem");
 
-		if (old == nullptr) {
-			old = func->GetFuncPtr();
+		if (UseItem_internal == nullptr) {
+			UseItem_internal = func->GetFuncPtr();
 		}
 
-		func->SetFuncPtr(&empty);
+		func->SetFuncPtr(&UseItem_Hook);
 	}
 
 	if (UObjectGlobals::FindFirstOf(L"HbkMainGameMode_C") != nullptr) {
@@ -163,6 +173,11 @@ std::pair<bool, bool> Engine::OnMapLoad(UEngine* EngineInst, FWorldContext &Worl
 	} else {
 		HibikiMod::Instance->client.SetState(APClient::ClientStatus::READY);
 	}
+
+	if (Engine::loadedPlacementAssets == false) {
+		Engine::LoadPlacementAssets();
+	}
+
 
 	return std::make_pair(false, true);
 }

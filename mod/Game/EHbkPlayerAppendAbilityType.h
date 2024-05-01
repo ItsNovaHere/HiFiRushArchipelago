@@ -2,7 +2,7 @@
 #define HIBIKI_EHBKPLAYERAPPENDABILITYTYPE_H
 
 enum EHbkPlayerAppendAbilityType : char {
-	None,
+	Action_None,
 	Action_BeatHit,
 	Action_SPAttack,
 	Action_Dodge,
@@ -18,7 +18,7 @@ enum EHbkPlayerAppendAbilityType : char {
 
 inline const char* AbilityToString(EHbkPlayerAppendAbilityType t) {
 	switch(t) {
-		case None: return "None";
+		case Action_None: return "None";
 		case Action_BeatHit: return "Action_BeatHit";
 		case Action_SPAttack: return "Action_SPAttack";
 		case Action_Dodge: return "Action_Dodge";
