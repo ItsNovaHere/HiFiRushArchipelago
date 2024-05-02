@@ -31,6 +31,10 @@ void Client::Update() {
 	}
 }
 
+bool Client::IsConnected() {
+	return ap != nullptr;
+}
+
 void Client::Connect() {
 	if (ap) { ap->reset(); }
 	ap.reset();

@@ -23,6 +23,7 @@ public:
 	void Update();
 	void SendItem(const std::string& Item);
 	void SetState(APClient::ClientStatus status);
+	bool IsConnected();
 
 private:
 	std::unique_ptr<APClient> ap;

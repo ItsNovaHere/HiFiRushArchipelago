@@ -30,47 +30,52 @@ extern static Engine::takeItem;
 extern static Engine::FEngineCreateListener Engine::FEngineCreateListener::EngineCreateListener;
 
 void LearnAbility_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
-	auto Stack = (FFrame_50_AndBelow&) TheStack;
-	const FNativeFuncPtr* GNatives = (FNativeFuncPtr*) 0x147196eb0;
-	if (Stack.Code) {
-		auto reset = Stack.Code;
-		UObject* obj;
-		auto B = *Stack.Code++;
-		(GNatives[B])(TheStack.Object(), Stack, &obj);
+	if (HibikiMod::Instance->client.IsConnected()) {
+		auto Stack = (FFrame_50_AndBelow &) TheStack;
+		const FNativeFuncPtr* GNatives = (FNativeFuncPtr*) 0x147196eb0; // TODO: scan for gnatives
+		if (Stack.Code) {
+			// this is really ugly, but ue4/ue4ss have forced me to do this.
+			auto reset = Stack.Code;
+			UObject* obj;
+			auto B = *Stack.Code++;
+			(GNatives[B])(TheStack.Object(), Stack, &obj);
 
-		EHbkPlayerAppendAbilityType ability;
-		B = *Stack.Code++;
-		(GNatives[B])(TheStack.Object(), Stack, &ability);
+			EHbkPlayerAppendAbilityType ability;
+			B = *Stack.Code++;
+			(GNatives[B])(TheStack.Object(), Stack, &ability);
 
-		static std::list<EHbkPlayerAppendAbilityType> AbilitiesToDisableLearning = {
-				EHbkPlayerAppendAbilityType::Action_Magnet,
-		};
+			static std::list <EHbkPlayerAppendAbilityType> AbilitiesToDisableLearning = {
+					EHbkPlayerAppendAbilityType::Action_Magnet,
+			};
 
-		for (auto a : AbilitiesToDisableLearning) {
-			if (ability == a) {
-				Log::Info("Game tried to learn ability %s, but it is in the block list, returning.", AbilityToString(ability));
-				return;
+			for (auto a: AbilitiesToDisableLearning) {
+				if (ability == a) {
+					Log::Info("Game tried to learn ability %s, but it is in the block list, returning.", AbilityToString(ability));
+					return;
+				}
 			}
-		}
 
-		Stack.Code = reset;
+			Stack.Code = reset;
+		}
 	}
 
 	LearnAbility_internal(Context, TheStack, Z_Param__Result);
 }
 
-void UseItem_Hook(UObject* Context, FFrame& TheStack, void* RESULT_DECL) {
+void UseItem_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 	static std::vector<const wchar_t*> itemsToHook = {L"LifeCoreItem", L"CircuitItem", L"ReverbPieceItem", L"LifeTankPieceItem"};
 
-	for (auto item : itemsToHook) {
-		if (Context->GetName().rfind(item, 0) == 0) {
-			Log::Info("%s (%s) tried to call Multicast_UseItem.", Util::WideToMultiByte(Context->GetName()).c_str(), Util::WideToMultiByte(Context->GetFullName()).c_str());
-			HibikiMod::Instance->client.SendItem(Util::WideToMultiByte(Context->GetName()));
-			return;
+	if (HibikiMod::Instance->client.IsConnected()) {
+		for (auto item: itemsToHook) {
+			if (Context->GetName().rfind(item, 0) == 0) {
+				Log::Info("%s (%s) tried to call Multicast_UseItem.", Util::WideToMultiByte(Context->GetName()).c_str(), Util::WideToMultiByte(Context->GetFullName()).c_str());
+				HibikiMod::Instance->client.SendItem(Util::WideToMultiByte(Context->GetName()));
+				return;
+			}
 		}
 	}
 
-	UseItem_internal(Context, TheStack, RESULT_DECL);
+	UseItem_internal(Context, TheStack, Z_Param__Result);
 }
 
 void Engine::FEngineCreateListener::NotifyUObjectCreated(const RC::Unreal::UObjectBase* object, RC::Unreal::int32 index) {
@@ -135,16 +140,9 @@ void Engine::LoadPlacementAssets() {
 	reg->GetAllAssets(AllAssets, false);
 
 	for (FAssetData& Asset : AllAssets) {
-		if (Asset.PackageName().ToString().rfind(L"Item/Object/Placement") != std::wstring::npos) {
-			Log::Info("%s", Util::WideToMultiByte(Asset.PackageName().ToString()).c_str());
-			Log::Info("%s", Util::WideToMultiByte(Asset.AssetName().ToString()).c_str());
-			Log::Info("");
-		}
-
 		if (Asset.ObjectPath().ToString().ends_with(L"_PLC_C")) {
-			auto clas = (UClass*) UAssetRegistryHelpers::GetAsset(Asset);
+			auto clas = (UClass*) UAssetRegistryHelpers::GetAsset(Asset); // _C is actually just a class, so we can cast and get default object.
 			auto asset = clas->GetClassDefaultObject();
-			Log::Info("%s", Util::WideToMultiByte(asset->GetFullName()).c_str());
 			Engine::placementAssets.insert({ Asset.AssetName().ToString(), *asset->GetValuePtrByPropertyNameInChain<FGameplayTag>(L"InventoryItemTag") });
 		}
 	}
@@ -174,7 +172,7 @@ std::pair<bool, bool> Engine::OnMapLoad(UEngine* EngineInst, FWorldContext &Worl
 		HibikiMod::Instance->client.SetState(APClient::ClientStatus::READY);
 	}
 
-	if (Engine::loadedPlacementAssets == false) {
+	if (!Engine::loadedPlacementAssets) {
 		Engine::LoadPlacementAssets();
 	}
 
