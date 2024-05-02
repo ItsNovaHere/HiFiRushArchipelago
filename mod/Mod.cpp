@@ -57,10 +57,6 @@ HibikiMod::HibikiMod() {
 			if (ImGui::Button("Give grapple")) {
 				Engine::GiveAbility(EHbkPlayerAppendAbilityType::Action_Magnet);
 			}
-
-			if (ImGui::Button("Give life core")) {
-				Engine::GiveItem();
-			}
 		});
 }
 

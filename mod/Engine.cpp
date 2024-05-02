@@ -21,13 +21,12 @@
 using namespace RC;
 using namespace Unreal;
 
-extern static Engine::LearnAbility_internal;
-extern static Engine::UseItem_internal;
-extern static Engine::propStart;
-extern static Engine::placementAssets;
-extern static Engine::loadedPlacementAssets;
-extern static Engine::takeItem;
-extern static Engine::FEngineCreateListener Engine::FEngineCreateListener::EngineCreateListener;
+extern UnrealScriptFunction Engine::LearnAbility_internal;
+extern UnrealScriptFunction Engine::UseItem_internal;
+extern std::unordered_map<std::wstring, FGameplayTag> Engine::placementAssets;
+extern bool Engine::loadedPlacementAssets;
+extern FPlayerTakeItem Engine::takeItem;
+extern Engine::FEngineCreateListener Engine::EngineCreateListener;
 
 void LearnAbility_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 	if (HibikiMod::Instance->client.IsConnected()) {
@@ -59,7 +58,7 @@ void LearnAbility_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result
 		}
 	}
 
-	LearnAbility_internal(Context, TheStack, Z_Param__Result);
+	Engine::LearnAbility_internal(Context, TheStack, Z_Param__Result);
 }
 
 void UseItem_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
@@ -75,7 +74,7 @@ void UseItem_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 		}
 	}
 
-	UseItem_internal(Context, TheStack, Z_Param__Result);
+	Engine::UseItem_internal(Context, TheStack, Z_Param__Result);
 }
 
 void Engine::FEngineCreateListener::NotifyUObjectCreated(const RC::Unreal::UObjectBase* object, RC::Unreal::int32 index) {
@@ -87,8 +86,6 @@ void Engine::FEngineCreateListener::NotifyUObjectCreated(const RC::Unreal::UObje
 
 		if (LearnAbility_internal == nullptr) {
 			LearnAbility_internal = func->GetFuncPtr();
-			propStart = (FProperty*) func->GetChildProperties();
-
 			func->SetFuncPtr(&LearnAbility_Hook);
 		}
 
@@ -107,7 +104,7 @@ void Engine::GiveItem(const wchar_t* name) {
 	auto obj = UObjectGlobals::FindFirstOf(L"HbkPlayerCharacterManager_BP_C");
 	if (obj && Engine::placementAssets.contains(name)) {
 		auto tag = placementAssets[name];
-		takeItem(obj, tag, 3);
+		Engine::takeItem(obj, tag, 3);
 	} else {
 		//TODO: log error
 	}
@@ -131,7 +128,7 @@ void Engine::GiveAbility(EHbkPlayerAppendAbilityType ability) {
 }
 
 void Engine::SetupHooks() {
-	UObjectArray::AddUObjectCreateListener(&FEngineCreateListener::EngineCreateListener);
+	UObjectArray::AddUObjectCreateListener(&Engine::EngineCreateListener);
 }
 
 void Engine::LoadPlacementAssets() {

@@ -24,14 +24,13 @@ typedef bool (__thiscall *FPlayerTakeItem)(UObject* t, FGameplayTag tag, int cou
 
 namespace Engine {
 	struct FEngineCreateListener : public FUObjectCreateListener {
-		static FEngineCreateListener EngineCreateListener{};
 		void NotifyUObjectCreated(const UObjectBase* object, int32 index) override;
 		void OnUObjectArrayShutdown() override;
 	};
+	inline static FEngineCreateListener EngineCreateListener{};
 
 	static UnrealScriptFunction LearnAbility_internal = nullptr;
 	static UnrealScriptFunction UseItem_internal = nullptr;
-	static FProperty* propStart = nullptr;
 
 	static std::unordered_map<std::wstring, FGameplayTag> placementAssets = {};
 	static bool loadedPlacementAssets = false;
