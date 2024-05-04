@@ -11,11 +11,10 @@
 #include <Unreal/FFrame.hpp>
 #include <Unreal/UActorComponent.hpp>
 #include <Unreal/Property/NumericPropertyTypes.hpp>
+#include <Unreal/Property/FMulticastInlineDelegateProperty.hpp>
 #include <Unreal/UScriptStruct.hpp>
 #include <stdlib.h>
-#include <Windows.h>
 #include "Mod.h"
-#include "Util.h"
 #include "Game/EHbkPlayerAppendAbilityType.h"
 
 using namespace RC;
@@ -23,10 +22,12 @@ using namespace Unreal;
 
 extern UnrealScriptFunction Engine::LearnAbility_internal;
 extern UnrealScriptFunction Engine::UseItem_internal;
+extern UnrealScriptFunction Engine::ActorDied_internal;
+
 extern std::unordered_map<std::wstring, FGameplayTag> Engine::placementAssets;
-extern bool Engine::loadedPlacementAssets;
-extern FPlayerTakeItem Engine::takeItem;
 extern Engine::FEngineCreateListener Engine::EngineCreateListener;
+extern FPlayerTakeItem Engine::takeItem;
+extern bool Engine::loadedPlacementAssets;
 
 void LearnAbility_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 	if (HibikiMod::Instance->client.IsConnected()) {
@@ -77,12 +78,18 @@ void UseItem_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 	Engine::UseItem_internal(Context, TheStack, Z_Param__Result);
 }
 
+void ActorDied_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
+	if (HibikiMod::Instance->client.IsConnected()) {
+		HibikiMod::Instance->client.SendDeathLink();
+	}
+
+	Engine::ActorDied_internal(Context, TheStack, Z_Param__Result);
+}
+
 void Engine::FEngineCreateListener::NotifyUObjectCreated(const RC::Unreal::UObjectBase* object, RC::Unreal::int32 index) {
 	auto cla = ((UObject*)object)->GetClassPrivate();
 	if (cla->GetSuperStruct()->GetName() == L"HbkPlayerCharacterManager") {
 		auto func = ((UObject*)object)->GetFunctionByNameInChain(L"LearnPlayerAbility");
-
-		Log::Info("%p", (void*)func->GetFuncPtr());
 
 		if (LearnAbility_internal == nullptr) {
 			LearnAbility_internal = func->GetFuncPtr();
@@ -91,6 +98,19 @@ void Engine::FEngineCreateListener::NotifyUObjectCreated(const RC::Unreal::UObje
 
 		if (func->GetFuncPtr() != &LearnAbility_Hook) {
 			func->SetFuncPtr(&LearnAbility_Hook);
+		}
+	}
+
+	if (cla->GetSuperStruct()->GetName() == L"HbkPlayerController") {
+		auto func = ((UObject*)object)->GetFunctionByNameInChain(L"Receive_ActorDied");
+
+		if (ActorDied_internal == nullptr) {
+			ActorDied_internal = func->GetFuncPtr();
+			func->SetFuncPtr(&ActorDied_Hook);
+		}
+
+		if (func->GetFuncPtr() != &ActorDied_Hook) {
+			func->SetFuncPtr(&ActorDied_Hook);
 		}
 	}
 }
@@ -112,19 +132,36 @@ void Engine::GiveItem(const wchar_t* name) {
 
 void Engine::GiveAbility(EHbkPlayerAppendAbilityType ability) {
 	auto obj = UObjectGlobals::FindFirstOf(L"HbkPlayerCharacterManager_BP_C");
-	auto func = obj->GetFunctionByNameInChain(L"LearnPlayerAbility");
-	func->SetFuncPtr(LearnAbility_internal);
+	if (obj) {
+		auto func = obj->GetFunctionByNameInChain(L"LearnPlayerAbility");
+		if (func) {
+			func->SetFuncPtr(LearnAbility_internal);
 
-	struct params {
-		UObject* obj;
-		EHbkPlayerAppendAbilityType ability;
-	} p {
-		obj = obj,
-		ability = ability
-	};
+			struct params {
+				UObject* obj;
+				EHbkPlayerAppendAbilityType ability;
+			} p {
+				obj = obj,
+				ability = ability
+			};
 
-	obj->ProcessEvent(func, (void*)&p);
-	func->SetFuncPtr(&LearnAbility_Hook);
+			obj->ProcessEvent(func, (void*)&p);
+			func->SetFuncPtr(&LearnAbility_Hook);
+		}
+	}
+}
+
+void Engine::ForceDeath() {
+	auto obj = UObjectGlobals::FindFirstOf(L"HbkPlayerControllerBP_C");
+	if (obj) {
+		auto damage = (UObject*) obj->GetValuePtrByPropertyNameInChain(L"HbkDamage");
+		if (damage) {
+			auto func = damage->GetFunctionByNameInChain(L"SetDied");
+			if (func) {
+				obj->ProcessEvent(func, nullptr);
+			}
+		}
+	}
 }
 
 void Engine::SetupHooks() {

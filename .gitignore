@@ -1,7 +1,9 @@
-/.xmake
+# IDE ignores
 /.idea
+/.vscode
+
+# Build system ignores
+/.xmake
 /Intermediates
 /Binaries
 /cmake-*
-/Hibiki
-/deps/steam

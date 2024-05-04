@@ -10,6 +10,7 @@
 #include <memory>
 #include <list>
 #include <string>
+#include "Log.h"
 
 class Client {
 public:
@@ -22,6 +23,7 @@ public:
 	void Connect();
 	void Update();
 	void SendItem(const std::string& Item);
+	void SendDeathLink();
 	void SetState(APClient::ClientStatus status);
 	bool IsConnected();
 

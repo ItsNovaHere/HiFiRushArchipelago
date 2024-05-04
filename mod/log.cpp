@@ -1,4 +1,6 @@
-#include "log.h"
+#include "Log.h"
+#include "Util.h"
+#include <DynamicOutput/DynamicOutput.hpp>
 
 void Log::Info(const char* fmt, ...) {
 	std::va_list args1;
@@ -9,5 +11,5 @@ void Log::Info(const char* fmt, ...) {
 	va_end(args1);
 	std::vsnprintf(buf.data(), buf.size(), fmt, args2);
 
-	std::printf("[HIBIKI] %s\n", buf.data());
+	RC::Output::send<RC::LogLevel::Verbose>(STR("[HIBIKI] {:?}\n"), Util::MultiByteToWide(std::string(buf.data(), buf.size())));
 }

@@ -5,6 +5,7 @@
 #include <Mod/CppUserModBase.hpp>
 #include <Unreal/Hooks.hpp>
 #include "Client.h"
+#include "Log.h"
 
 class HibikiMod : public CppUserModBase {
 public:

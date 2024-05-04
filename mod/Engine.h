@@ -9,7 +9,8 @@
 #include <Unreal/Hooks.hpp>
 #include <Unreal/FURL.hpp>
 #include "Game/EHbkPlayerAppendAbilityType.h"
-#include "log.h"
+#include "Log.h"
+#include "Util.h"
 
 using namespace RC;
 using namespace Unreal;
@@ -19,7 +20,6 @@ struct FGameplayTag {
 };
 
 typedef void (*FNativeFuncPtr)(UObject* Context, FFrame_50_AndBelow& TheStack, void* Z_Param__Result);
-typedef FGameplayTag (*FRequestGameplayTag)(const FName& TagName, bool ErrorIfNotFound);
 typedef bool (__thiscall *FPlayerTakeItem)(UObject* t, FGameplayTag tag, int count);
 
 namespace Engine {
@@ -31,6 +31,7 @@ namespace Engine {
 
 	static UnrealScriptFunction LearnAbility_internal = nullptr;
 	static UnrealScriptFunction UseItem_internal = nullptr;
+	static UnrealScriptFunction ActorDied_internal = nullptr;
 
 	static std::unordered_map<std::wstring, FGameplayTag> placementAssets = {};
 	static bool loadedPlacementAssets = false;
@@ -41,6 +42,7 @@ namespace Engine {
 	void GiveAbility(enum EHbkPlayerAppendAbilityType ability);
 	void GiveItem(const wchar_t* name);
 	void LoadPlacementAssets();
+	void ForceDeath();
 }
 
 #endif

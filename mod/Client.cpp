@@ -2,10 +2,9 @@
 #include <apuuid.hpp>
 #include <string>
 #include <functional>
+#include <ctime>
 #include "Engine.h"
 #include "Game/EHbkPlayerAppendAbilityType.h"
-#include "log.h"
-
 
 
 using namespace std::placeholders;
@@ -15,8 +14,16 @@ Client::Client() {
 }
 
 void Client::SendItem(const std::string& Item) {
-	ap->LocationChecks( { ap->get_location_id(Item) } );
-	ap->Sync();
+	if (ap) {
+		ap->LocationChecks( { ap->get_location_id(Item) } );
+		ap->Sync();
+	}
+}
+
+void Client::SendDeathLink() {
+	if (ap) {
+		ap->Bounce({{ "time", (float)std::time(nullptr) },{ "source", std::string(name) }}, {}, {}, { "DeathLink" });
+	}
 }
 
 void Client::SetState(APClient::ClientStatus status) {
@@ -58,7 +65,7 @@ void Client::Connect() {
 
 void Client::OnSocketConnected() {
 	Log::Info("[APClient] Socket Connected");
-	ap->ConnectSlot(name, password, 0b111);
+	ap->ConnectSlot(name, password, 0b111, { "DeathLink" });
 }
 
 void Client::OnSocketDisconnected() {
@@ -115,5 +122,8 @@ void Client::OnPrintJson(const std::list <APClient::TextNode> &msg) {
 }
 
 void Client::OnBounced(const nlohmann::json& cmd) {
-
+	auto tags = cmd["tags"].template get<std::vector<std::string>>();
+	if (std::find(tags.begin(), tags.end(), "DeathLink") != std::end(tags)) {
+		Log::Info("DEATHLINK TRIGGER");
+	}
 }

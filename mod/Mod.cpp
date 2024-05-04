@@ -6,7 +6,7 @@
 #include "Mod.h"
 #include "Engine.h"
 #include "Game/EHbkPlayerAppendAbilityType.h"
-#include "log.h"
+
 
 using namespace RC;
 using namespace Unreal;
