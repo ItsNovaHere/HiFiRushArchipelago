@@ -124,6 +124,6 @@ void Client::OnPrintJson(const std::list <APClient::TextNode> &msg) {
 void Client::OnBounced(const nlohmann::json& cmd) {
 	auto tags = cmd["tags"].template get<std::vector<std::string>>();
 	if (std::find(tags.begin(), tags.end(), "DeathLink") != std::end(tags)) {
-		Log::Info("DEATHLINK TRIGGER");
+		Engine::ForceDeath();
 	}
 }
