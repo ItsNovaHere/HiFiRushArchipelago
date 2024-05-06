@@ -75,6 +75,8 @@ void UseItem_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 		}
 	}
 
+	Log::Info("%s (%s) called Multicast_UseItem.", Util::WideToMultiByte(Context->GetName()).c_str(), Util::WideToMultiByte(Context->GetFullName()).c_str());
+
 	Engine::UseItem_internal(Context, TheStack, Z_Param__Result);
 }
 
