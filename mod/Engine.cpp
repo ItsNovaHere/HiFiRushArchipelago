@@ -172,7 +172,7 @@ const auto SetGameFlagValueInCategoryOffset = 0x14d047290;
 static SetGameFlagValueInCategory SetGameFlagValueInCategory_real = (SetGameFlagValueInCategory)SetGameFlagValueInCategoryOffset;
 
 int SetGameFlagValueInCategory_Hook(UObject* mang, byte ContainerIndex, FName Category, FName Flag, int Value, byte SetMode) {
-	Log::Info("%s.%s = %d", Util::WideToMultiByte(Category.ToString()).c_str(), Util::WideToMultiByte(Flag.ToString()).c_str(), Value);
+	Log::Info("%s::%s = %d", Util::WideToMultiByte(Category.ToString()).c_str(), Util::WideToMultiByte(Flag.ToString()).c_str(), Value);
 	return SetGameFlagValueInCategory_real(mang, ContainerIndex, Category, Flag, Value, SetMode);
 }
 
