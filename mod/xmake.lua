@@ -14,6 +14,10 @@ target(projectName)
     add_deps("valijson")
     add_packages("websocketpp")
     add_deps("wswrap")
+    add_links("detours")
+
+    add_linkdirs("../deps/Detours/lib.X64/")
+    add_includedirs("../deps/Detours/include/")
 
     add_defines("ASIO_STANDALONE")
     add_defines("ASIO_NO_WIN32_LEAN_AND_MEAN")

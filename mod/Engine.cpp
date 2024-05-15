@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include "Mod.h"
 #include "Game/EHbkPlayerAppendAbilityType.h"
+#include "debugapi.h"
+#include "detours.h"
 
 using namespace RC;
 using namespace Unreal;
@@ -164,8 +166,25 @@ void Engine::ForceDeath() {
 	}
 }
 
+
+typedef int (*SetGameFlagValueInCategory)(UObject* mang, byte ContainerIndex, FName Category, FName Flag, int Value, byte SetMode);
+const auto SetGameFlagValueInCategoryOffset = 0x14d047290;
+static SetGameFlagValueInCategory SetGameFlagValueInCategory_real = (SetGameFlagValueInCategory)SetGameFlagValueInCategoryOffset;
+
+int SetGameFlagValueInCategory_Hook(UObject* mang, byte ContainerIndex, FName Category, FName Flag, int Value, byte SetMode) {
+	Log::Info("%s.%s = %d", Util::WideToMultiByte(Category.ToString()).c_str(), Util::WideToMultiByte(Flag.ToString()).c_str(), Value);
+	return SetGameFlagValueInCategory_real(mang, ContainerIndex, Category, Flag, Value, SetMode);
+}
+
 void Engine::SetupHooks() {
 	UObjectArray::AddUObjectCreateListener(&Engine::EngineCreateListener);
+
+
+	DetourRestoreAfterWith();
+	DetourTransactionBegin();
+	DetourUpdateThread(GetCurrentThread());
+	DetourAttach(&(PVOID&)SetGameFlagValueInCategory_real, SetGameFlagValueInCategory_Hook);
+	DetourTransactionCommit();
 }
 
 void Engine::LoadPlacementAssets() {
