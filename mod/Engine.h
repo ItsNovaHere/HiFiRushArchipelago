@@ -35,7 +35,7 @@ namespace Engine {
 
 	static std::unordered_map<std::wstring, FGameplayTag> placementAssets = {};
 	static bool loadedPlacementAssets = false;
-	static FPlayerTakeItem takeItem = (FPlayerTakeItem) 0x141f057f0; // TODO: scan for this address instead of hard coding it
+	static FPlayerTakeItem takeItem = (FPlayerTakeItem) 0x141f053f0; // V9
 
 	std::pair<bool, bool> OnMapLoad(UEngine* EngineInst, struct FWorldContext& WorldContext, FURL URL, UPendingNetGame* PendingGame, FString& Error);
 	void SetupHooks();

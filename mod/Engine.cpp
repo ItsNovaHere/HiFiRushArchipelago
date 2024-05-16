@@ -34,7 +34,7 @@ extern bool Engine::loadedPlacementAssets;
 void LearnAbility_Hook(UObject* Context, FFrame& TheStack, void* Z_Param__Result) {
 	if (HibikiMod::Instance->client.IsConnected()) {
 		auto Stack = (FFrame_50_AndBelow &) TheStack;
-		const FNativeFuncPtr* GNatives = (FNativeFuncPtr*) 0x147196eb0; // TODO: scan for gnatives
+		const FNativeFuncPtr* GNatives = (FNativeFuncPtr*) 0x147191f30; // TODO: scan for gnatives
 		if (Stack.Code) {
 			// this is really ugly, but ue4/ue4ss have forced me to do this.
 			auto reset = Stack.Code;
@@ -168,12 +168,21 @@ void Engine::ForceDeath() {
 
 
 typedef int (*SetGameFlagValueInCategory)(UObject* mang, byte ContainerIndex, FName Category, FName Flag, int Value, byte SetMode);
-const auto SetGameFlagValueInCategoryOffset = 0x14d047290;
+typedef int (*SetGameFlagAlt)(UObject* mang, byte ContainerIndex, FName Category, FName Flag, int Value);
+
+const auto SetGameFlagValueInCategoryOffset = 0x14d181910; // V9
+const auto SetGameFlagAltOffset = 0x141ed5570; // V9
 static SetGameFlagValueInCategory SetGameFlagValueInCategory_real = (SetGameFlagValueInCategory)SetGameFlagValueInCategoryOffset;
+static SetGameFlagAlt SetGameFlagAlt_real = (SetGameFlagAlt)SetGameFlagAltOffset;
 
 int SetGameFlagValueInCategory_Hook(UObject* mang, byte ContainerIndex, FName Category, FName Flag, int Value, byte SetMode) {
 	Log::Info("%s::%s = %d", Util::WideToMultiByte(Category.ToString()).c_str(), Util::WideToMultiByte(Flag.ToString()).c_str(), Value);
 	return SetGameFlagValueInCategory_real(mang, ContainerIndex, Category, Flag, Value, SetMode);
+}
+
+int SetGameFlagAlt_Hook(UObject* mang, byte ContainerIndex, FName Category, FName Flag, int Value) {
+	Log::Info("%s::%s = %d", Util::WideToMultiByte(Category.ToString()).c_str(), Util::WideToMultiByte(Flag.ToString()).c_str(), Value);
+	return SetGameFlagAlt_real(mang, ContainerIndex, Category, Flag, Value);
 }
 
 void Engine::SetupHooks() {
@@ -184,6 +193,7 @@ void Engine::SetupHooks() {
 	DetourTransactionBegin();
 	DetourUpdateThread(GetCurrentThread());
 	DetourAttach(&(PVOID&)SetGameFlagValueInCategory_real, SetGameFlagValueInCategory_Hook);
+	DetourAttach(&(PVOID&)SetGameFlagAlt_real, SetGameFlagAlt_Hook);
 	DetourTransactionCommit();
 }
 
